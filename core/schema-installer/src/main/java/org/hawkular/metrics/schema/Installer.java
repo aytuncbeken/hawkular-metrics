@@ -23,15 +23,11 @@ import java.util.List;
 
 import javax.net.ssl.SSLContext;
 
+import com.datastax.driver.core.*;
 import org.hawkular.metrics.scheduler.api.JobsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.JdkSSLOptions;
-import com.datastax.driver.core.SSLOptions;
-import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 
 /**
@@ -61,6 +57,8 @@ public class Installer {
 
     private int versionUpdateMaxRetries;
 
+    private int readTimeoutSeconds;
+
     // Currently the installer is configured via system properties, and none of its fields are exposed as properties.
     // If the need should arise, the fields can be exposed as properties with public getter/setter methods.
     public Installer() {
@@ -76,6 +74,7 @@ public class Installer {
         replicationFactor = Integer.getInteger("hawkular.metrics.cassandra.replication-factor", 1);
         versionUpdateDelay = Long.getLong("hawkular.metrics.version-update.delay", 5) * 1000;
         versionUpdateMaxRetries = Integer.getInteger("hawkular.metrics.version-update.max-retries", 10);
+        readTimeoutSeconds = Integer.getInteger("hawkular.metrics.read.timeout",10) * 1000;
     }
 
     public void run() {
@@ -139,7 +138,7 @@ public class Installer {
 
     private Session createSession() {
         Cluster.Builder clusterBuilder = new Cluster.Builder();
-        clusterBuilder.addContactPoints(cassandraNodes.toArray(new String[] {}));
+        clusterBuilder.addContactPoints(cassandraNodes.toArray(new String[] {})).withSocketOptions(new SocketOptions().setReadTimeoutMillis(readTimeoutSeconds));
         if (useSSL) {
             SSLOptions sslOptions = null;
             try {
